@@ -1,14 +1,15 @@
 module PhotoGroove exposing (main)
 
 import Html exposing (..)
-import Html.Attributes exposing 
-    (name, title, type_, class, classList, id, src)
+import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Browser
 import Http
 import Json.Decode exposing (Decoder, int, list, string, succeed)
-import Json.Decode.Pipeline exposing (optional, required)
+import Json.Decode.Pipeline as Pipe exposing (optional, required)
+import Json.Encode as Encode
 import Random
+import Html.Attributes as Attrs exposing (..)
 
 type Status 
     = Loading
@@ -27,8 +28,8 @@ type alias Photo =
 photoDecoder : Decoder Photo
 photoDecoder = 
     succeed Photo
-        |> required "url" string
-        |> required "size" int
+        |> Pipe.required "url" string
+        |> Pipe.required "size" int
         |> optional "title" string "(untitled)"
 
 type alias Model =
@@ -66,6 +67,11 @@ viewLoaded photos selectedUrl chosenSize =
         , button
             [ onClick ClickedSurpriseMe ]
             [ text "Surprise Me!" ]
+        , div [ class "filters" ]
+            [ viewFilter "Hue" 0 
+            , viewFilter "Ripple" 0
+            , viewFilter "Noise" 0
+            ]
         , h3 [] [ text "Thumbnail Size:" ]
         , div [ id "choose-size" ]
             (List.map viewSizeChooser [ Small, Medium, Large ])
@@ -95,6 +101,19 @@ viewSizeChooser size =
         [ input [ type_ "radio", name "size", onClick (ClickedSize size) ] []
         , text (sizeToString size)
         ]
+
+viewFilter : String -> Int -> Html Msg
+viewFilter name magnitude =
+    div [ class "filter-slider" ]
+        [ label [] [ text name ]
+        , rangeSlider
+            [ Attrs.max "11"
+            , Attrs.property "val" (Encode.int magnitude)
+            ]
+            []
+        , label [] [ text (String.fromInt magnitude) ]
+        ]
+
 
 sizeToString : ThumbnailSize -> String
 sizeToString size = 
@@ -147,7 +166,7 @@ initialCmd : Cmd Msg
 initialCmd = 
     Http.get
         { url = "http://elm-in-action.com/photos/list.json"
-        , expect = Http.expectJson GotPhotos (list photoDecoder)
+        , expect = Http.expectJson GotPhotos (Json.Decode.list photoDecoder)
         }
 
 selectUrl : String -> Status -> Status
@@ -168,3 +187,7 @@ main =
         , update = update
         , subscriptions = \_ -> Sub.none
         }
+
+rangeSlider : List (Attribute msg) -> List (Html msg) -> Html msg
+rangeSlider attributes children = 
+    node "range-slider" attributes children
