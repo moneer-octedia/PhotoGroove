@@ -7,6 +7,7 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (onClick)
+import Dict exposing (Dict)
 
 type alias Photo = 
     { title : String
@@ -15,13 +16,23 @@ type alias Photo =
     , url : String
     }
 
+type Folder =
+    Folder
+        { name : String
+        , photoUrls : List String
+        , subfolders : List Folder
+        }
+
 type alias Model = 
     { selectedPhotoUrl : Maybe String
+    , photos : Dict String Photo
     }
 
 initialModel : Model
 initialModel = 
-    { selectedPhotoUrl = Nothing }
+    { selectedPhotoUrl = Nothing
+    , photos = Dict.empty
+    }
 
 viewSelectedPhoto : Photo -> Html Msg
 viewSelectedPhoto photo =
@@ -59,7 +70,29 @@ init _ =
 
 modelDecoder : Decoder Model
 modelDecoder =
-    Decode.succeed initialModel
+    Decode.succeed 
+        { selectedPhotoUrl = Just "trevi"
+        , photos = Dict.fromList
+            [ ( "trevi"
+                , { title = "Trevi"
+                , relatedUrls = [ "coli", "fresco" ]
+                , size = 34
+                , url = "trevi"
+                })
+            , ( "fresco"
+                , { title = "Fresco"
+                , relatedUrls = [ "trevi" ]
+                , size = 46
+                , url = "fresco"
+                })
+            , ( "coli"
+                , { title = "Coliseum"
+                    , relatedUrls = [ "trevi", "fresco" ]
+                    , size = 36
+                    , url = "coli"
+                    })
+            ]
+        }
 
 type Msg
     = ClickedPhoto String
@@ -75,9 +108,23 @@ update msg model =
         GotInitialModel (Err _) ->
             ( model, Cmd.none )
 
-view : Model -> Html msg
-view model = 
-    h1 [] [ text "The Grooviest Folders the world has ever seen" ]
+view : Model -> Html Msg
+view model =
+    let 
+        photoByUrl : String -> Maybe Photo
+        photoByUrl url = 
+            Dict.get url model.photos
+        
+        selectedPhoto : Html Msg
+        selectedPhoto = 
+            case Maybe.andThen photoByUrl model.selectedPhotoUrl of
+                Just photo ->
+                    viewSelectedPhoto photo
+                Nothing ->
+                    text ""
+    in
+    div [ class "content" ]
+        [ div [ class "selected-photo" ] [ selectedPhoto ] ]
 
 main : Program () Model Msg
 main =
